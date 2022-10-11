@@ -31,7 +31,7 @@ namespace engine {
 
 			layer.neurons = std::vector<Neuron>(
 				getNeuronCount(layerIndex), newNeuron
-				);
+			);
 			// Each layer has biases for the neurons in the next layer. 
 			layer.biases = std::vector<float>(getNeuronCount(layerIndex + 1));
 		}
@@ -50,10 +50,10 @@ namespace engine {
 	void NeuralNet::evolve() {
 		// How far the evolution can mutate values. Note: The higher the 
 		// quotient the slower the evolution. 
-		const float evolutionQuotient = 5.0f;
+		const float evolutionQuotient = 3.0f;
 		// How often values are evolved. Note: The higher the rate the less 
 		// often the values are mutated. 
-		const int evolutionRate = 2;
+		const int evolutionRate = 4;
 
 		for (Layer& layer : layers) {
 			for (Neuron& neuron : layer.neurons) {
@@ -100,7 +100,7 @@ namespace engine {
 
 			for (int hiddenNeuronIndex = 0; hiddenNeuronIndex <
 				hiddenLayerNeuronCount; hiddenNeuronIndex++
-				) {
+			) {
 				// Value of current hidden layer neuron. 
 				float& neuronValue = neuronValues[hiddenNeuronIndex];
 				// Weights of the current hidden layer. 
@@ -140,6 +140,15 @@ namespace engine {
 		// Sigmoid function. 
 		return 1.0f / (1.0f + std::exp(-value));
 	}
+	float NeuralNet::randRange(gs::Vec2f bounds) {
+		return randRange(bounds.x, bounds.y); 
+	}
+	float NeuralNet::randRange(float lowerBound, float upperBound) {
+		float value = static_cast<float>(rand() % 1000) / 1000.0f;
+		value *= upperBound - lowerBound;
+		value += lowerBound;
+		return value;
+	}
 	float NeuralNet::dot(
 		const std::vector<float>& v1, const std::vector<float>& v2
 	) {
@@ -157,34 +166,84 @@ namespace engine {
 
 		return product;
 	}
-	float NeuralNet::randRange(float lowerBound, float upperBound) {
-		float value = static_cast<float>(rand() % 1000) / 1000.0f;
-		value *= upperBound - lowerBound;
-		value += lowerBound;
-		return value;
-	}
 
 	std::vector<std::pair<Player, NeuralNet>> npcs;
 	int bestNpcIndex = 0;
+	int prvsBestNpcIndex = -1; 
+	bool endGenerationEarly = true; 
 
-	float calculateLastSafePosition(const Player& player) {
-		float safePosition = player.position.x;
+	gs::Vec2f calculateLastSafePosition(const Player& player) {
+		gs::Vec2f safePosition = player.position; 
 		// Used to simulate the next steps of an npc. 
+		bool initiallyOnGround = player.onGround; 
 		Player clone = player;
 
 		clone.isClone = true;
 
 		for (int step = 0; step < 180; step++) {
+			const bool onJumpOrb = Tile::getCollisionType(
+				currentMap->getTile(gs::Vec2i(
+					std::round(player.position.x),
+					std::round(player.position.y)
+				))
+			) == Tile::CollisionType::JumpOrb;
+
+			clone.jump = onJumpOrb && initiallyOnGround; 
 			clone.update();
+
+			if (!clone.onGround && !clone.isFlying)
+				step--; 
 
 			// Is safe if npc is on the ground or flying while not being hit.  
 			if ((clone.onGround || player.isFlying) && clone.respawnTicks == 0)
-				safePosition = clone.position.x;
+				safePosition = clone.position;
 			else if (clone.respawnTicks != 0)
 				break;
 		}
 
 		return safePosition;
+	}
+	bool calculateJumpDeathStatus(const Player& player) {
+		Player clone = player;
+
+		clone.isClone = true;
+
+		if (!clone.isFlying && clone.onGround) {
+			for (int step = 0; step < 180; step++) {
+				clone.jump = true; 
+				clone.update();
+
+				if (clone.onGround)
+					break;
+
+				if (clone.respawnTicks != 0)
+					return true;
+			}
+		}
+
+		return false; 
+	}
+	int calculateFlyingVerticalObsticleHeight(gs::Vec2f safePosition) {
+		int verticalDistance = 0;
+		gs::Vec2i tileBase = gs::Vec2i(
+			std::round(safePosition.x) + 1.0f,
+			std::round(safePosition.y)
+		);
+
+		for (int ypos = tileBase.y; ypos >= 0; ypos--) {
+			const Tile::Id currentTile = currentMap->getTile(gs::Vec2i(
+				tileBase.x, ypos
+			));
+			const Tile::CollisionType currentCollisionType = 
+				Tile::getCollisionType(currentTile); 
+
+			if (currentCollisionType == Tile::CollisionType::Solid ||
+				currentCollisionType == Tile::CollisionType::Spike
+			) 
+				verticalDistance++; 
+		}
+
+		return verticalDistance; 
 	}
 	std::pair<Player, NeuralNet>* getFarthestNpc() {
 		std::pair<Player, NeuralNet>* nearestNpc = nullptr;
@@ -223,7 +282,7 @@ namespace engine {
 			NeuralNet& neuralNet = pair.second;
 
 			// Creates a network with 2 inputs and 3 hidden neurons. 
-			neuralNet.createNetwork(2, 3);
+			neuralNet.createNetwork(5, 2);
 			neuralNet.randomize();
 		}
 
@@ -261,22 +320,32 @@ namespace engine {
 			Player& npc = pair.first;
 			NeuralNet& neuralNet = pair.second;
 
-			const float safePosition = calculateLastSafePosition(npc);
+			const gs::Vec2f safePosition = calculateLastSafePosition(npc);
+			const bool onJumpOrb = Tile::getCollisionType(
+				currentMap->getTile(gs::Vec2i(
+					std::round(npc.position.x),
+					std::round(npc.position.y)
+				))
+			) == Tile::CollisionType::JumpOrb;
+			const float flyingVerticalObsticleHeight = static_cast<float>(
+				calculateFlyingVerticalObsticleHeight(safePosition)
+			); 
+
 			float prediction = neuralNet.predict(
 				{
-					-(safePosition - npc.position.x),
-					static_cast<float>(npc.isFlying) * 5.0f
+					-std::min(safePosition.x - npc.position.x, 8.0f),
+					static_cast<float>(npc.isFlying) * 2.0f,
+					npc.isFlying ? flyingVerticalObsticleHeight : 0.0f, 
+					static_cast<float>(onJumpOrb) * 2.0f,
+					static_cast<float>(calculateJumpDeathStatus(npc)) * 1.0f
 				}
 			);
 
 			// Npc will only jump of the prediction crosses the threshold. 
 			if (prediction > jumpingThreshold)
-				npc.jump = npc.onGround || npc.isFlying;
+				npc.jump = npc.onGround || npc.isFlying || onJumpOrb;
 
 			npc.update();
-
-			if (npc.respawnTicks == 2)
-				attempt++;
 
 			// Finds the farthest npc. 
 			if (npc.position.x > farthestDistance) {
@@ -285,20 +354,27 @@ namespace engine {
 			}
 		}
 
+		int lastNpcAlive = 0; 
 		int npcsAlive = 0;
 
-		for (auto& pair : npcs) {
+		for (int pairIndex = 0; pairIndex < npcs.size(); pairIndex++) {
+			auto& pair = npcs[pairIndex]; 
 			Player& npc = pair.first;
 
-			if (npc.respawnTicks == 0)
+			if (npc.respawnTicks == 0) {
+				lastNpcAlive = pairIndex; 
 				npcsAlive++;
+			}
 		}
 
 		// If all npcs are dead then start the next generation. 
-		if (npcsAlive == 0) {
+		if (npcsAlive == 0 || (endGenerationEarly && npcsAlive == 1 &&
+			lastNpcAlive == prvsBestNpcIndex
+		)) {
 			spawnNpcs();
 			evolveNpcs();
 			generation++;
+			prvsBestNpcIndex = bestNpcIndex; 
 		}
 	}
 	void resetSimulation() {

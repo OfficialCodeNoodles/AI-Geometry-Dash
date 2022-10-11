@@ -6,7 +6,7 @@ int main() {
 	while (gameEngine::isOpen()) 
 		gameEngine::update(); 
 
-	gameEngine::close(); 
+	gameEngine::close();
 
 	return 0;
 }

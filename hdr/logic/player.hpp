@@ -14,6 +14,7 @@ namespace engine {
 		// Time left until a respawn after dying. 
 		int respawnTicks;
 		bool isFlying; 
+		bool isFlipped; 
 		// The coordinate of the last portal that was entered. This is used to 
 		// prevent a player from immidiatly re-entering a portal. 
 		gs::Vec2i lastPortalEntry; 

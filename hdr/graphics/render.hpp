@@ -26,15 +26,19 @@ namespace engine {
 		extern sf::Sprite sGround; 
 		extern sf::Texture tTileSheet; 
 		extern sf::Sprite sTile;
-		extern sf::Texture tPortals[4]; 
+		extern sf::Texture tPortals[8]; 
 		extern sf::Sprite sPortal; 
 		extern std::vector<PortalPair> portalPairs; 
 		extern sf::Texture tCubeSheet; 
 		extern sf::Sprite sCube; 
 		extern sf::Texture tShips[2]; 
 		extern sf::Sprite sShip;
+		extern sf::Texture tJumpOrb; 
+		extern sf::Sprite sJumpOrb; 
 		extern sf::Texture tGroundHighlight; 
 		extern sf::Sprite sGroundHighlight;
+		extern sf::Texture tCrown; 
+		extern sf::Sprite sCrown; 
 		extern gs::Color globalLevelColor;
 
 		void loadAssets(); 
@@ -64,7 +68,7 @@ namespace engine {
 		void renderPortalFronts(); 
 		void renderMap(const Map& map); 
 		inline void setCubeTexture(int index); 
-		void renderPlayer(const Player& player); 
+		void renderPlayer(const Player& player, bool renderCrown = false); 
 		void renderNpcs(); 
 		inline void renderParticle(const Particle& particle); 
 		void renderParticles(); 

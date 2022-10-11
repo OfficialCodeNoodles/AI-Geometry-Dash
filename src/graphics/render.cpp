@@ -14,15 +14,19 @@ namespace engine {
 		sf::Sprite sGround;
 		sf::Texture tTileSheet;
 		sf::Sprite sTile;
-		sf::Texture tPortals[4];
+		sf::Texture tPortals[8];
 		sf::Sprite sPortal;
 		std::vector<PortalPair> portalPairs;
 		sf::Texture tCubeSheet;
 		sf::Sprite sCube;
 		sf::Texture tShips[2];
 		sf::Sprite sShip;
+		sf::Texture tJumpOrb;
+		sf::Sprite sJumpOrb;
 		sf::Texture tGroundHighlight;
 		sf::Sprite sGroundHighlight;
+		sf::Texture tCrown;
+		sf::Sprite sCrown;
 		gs::Color globalLevelColor = gs::Color(0, 220, 255);
 
 		void loadAssets() {
@@ -36,7 +40,7 @@ namespace engine {
 			if (tTileSheet.loadFromFile(mAssetDirectory + "tileSheet.png"))
 				sTile.setTexture(tTileSheet); 
 			// Loads the portals. 
-			for (int portalIndex = 0; portalIndex < 4; portalIndex++) {
+			for (int portalIndex = 0; portalIndex < 8; portalIndex++) {
 				if (!tPortals[portalIndex].loadFromFile(
 					mAssetDirectory + "portal" + std::to_string(portalIndex)
 						+ ".png"
@@ -54,9 +58,15 @@ namespace engine {
 				))
 					break; 
 			}
+			// Loads the jump-orb texture. 
+			if (tJumpOrb.loadFromFile(mAssetDirectory + "jumpOrb.png"))
+				sJumpOrb.setTexture(tJumpOrb); 
 			// Loads the ground highlight.
 			if (tGroundHighlight.loadFromFile(mAssetDirectory + "highlight.png"))
-				sGroundHighlight.setTexture(tGroundHighlight); 
+				sGroundHighlight.setTexture(tGroundHighlight);
+			// Loads the crown. 
+			if (tCrown.loadFromFile(mAssetDirectory + "crown.png"))
+				sCrown.setTexture(tCrown); 
 
 			handleAssets(); 
 		}
@@ -79,6 +89,12 @@ namespace engine {
 			) * 0.5f);
 			sPortal.setScale(sTile.getScale()); 
 			sPortal.setRotation(-90.0f); 
+
+			// sJumpOrb
+			sJumpOrb.setOrigin(gs::Vec2f(
+				tJumpOrb.getSize().x, tJumpOrb.getSize().y
+			) * 0.5f); 
+			sJumpOrb.setScale(0.5, 0.5f);
 
 			// sCube
 			sCube.setScale(
@@ -112,7 +128,7 @@ namespace engine {
 				);
 			else 
 				gs::util::approach(
-					&fluidCameraPosition.y, currentMap->size.y - 6.5f, 8.0f
+					&fluidCameraPosition.y, currentMap->size.y - 5.5f, 8.0f
 				);
 		}
 		void updateCamera() {
@@ -129,7 +145,7 @@ namespace engine {
 			); 
 			gs::util::clamp(
 				&cameraPosition.y, 0.0f, static_cast<float>(currentMap->size.y) 
-					- (tiledScreenCenter.y * 2.0f) - 1.0f + 3.0f
+					- (tiledScreenCenter.y * 2.0f) - 1.0f + 4.0f
 			); 
 
 			clippedCameraPosition = gs::Vec2i(
@@ -221,7 +237,7 @@ namespace engine {
 		void renderGround(const Map& map) {
 			const float groundHorizontalOffset = 
 				sGround.getTexture()->getSize().x * groundScale; 
-			const float groundVerticalOffset = -288.0f; 
+			const float groundVerticalOffset = -192.0f; 
 
 			for (int groundIndex = 0; groundIndex < 5; groundIndex++) {
 				sGround.setPosition( 
@@ -281,6 +297,15 @@ namespace engine {
 				: gs::Color::White
 			); 
 
+			if (Tile::getCollisionType(id) == Tile::CollisionType::JumpOrb) {
+				sJumpOrb.setPosition(transformedPosition + gs::Vec2f(
+					tileSize / 2.0f, tileSize / 2.0f
+				)); 
+				window::winmain->draw(sJumpOrb); 
+
+				return; 
+			}
+
 			const gs::Vec2f originalScale = sTile.getScale(); 
 
 			const int edgeEffectSize = 2; 
@@ -313,7 +338,7 @@ namespace engine {
 			transformedPosition = getGlobalPosition(transformedPosition); 
 			sPortal.setPosition(transformedPosition); 
 
-			int textureId = 1 + (portalPair.id - Tile::PortalEntrance) * 2;
+			int textureId = Tile::getTextureIndex(portalPair.id) + 1;
 
 			sPortal.setTexture(tPortals[textureId]); 
 
@@ -327,7 +352,7 @@ namespace engine {
 			transformedPosition = getGlobalPosition(transformedPosition);
 			sPortal.setPosition(transformedPosition);
 
-			int textureId = (portalPair.id - Tile::PortalEntrance) * 2;
+			int textureId = Tile::getTextureIndex(portalPair.id) ; 
 
 			sPortal.setTexture(tPortals[textureId]);
 
@@ -343,12 +368,12 @@ namespace engine {
 		}
 		void renderMap(const Map& map) {
 			// Constrains the xpos to be within the bounds of the map. 
-			static auto xClamp = [&](int xpos) {
-				return gs::util::clamp(xpos, 0, map.size.x - 1); 
+			auto xClamp = [&](int xpos) {
+				return gs::util::clamp(xpos, 0, map.size.x); 
 			}; 
 			// Constrains the ypos to be within the bounds of the map. 
-			static auto yClamp = [&](int ypos) { 
-				return gs::util::clamp(ypos, 0, map.size.y - 1); 
+			auto yClamp = [&](int ypos) { 
+				return gs::util::clamp(ypos, 0, map.size.y); 
 			};
 
 			portalPairs.clear(); 
@@ -365,9 +390,56 @@ namespace engine {
 						Tile::getCollisionType(tileId); 
 
 					if (tileId != Tile::Air) {
-						if (tileCollision != Tile::CollisionType::Portal) 
+						if (tileCollision != Tile::CollisionType::Portal) {
+
+							switch (tileCollision) {
+							case Tile::CollisionType::JumpPad:
+								if (rand() % 2 == 0)
+									Particle::spawnParticles(
+										gs::Vec2f(tilePosition.x, tilePosition.y) 
+											+ gs::Vec2f(0.5f, 0.9f), 
+										ParticleInfo::JumpPad, 
+										gs::Color::Yellow, 
+										3 - (window::renderFramerate / 30)
+									); 
+								break;
+							case Tile::CollisionType::JumpOrb:
+								float angle = rand() % 360;
+								gs::Vec2f centerOffset = gs::util::polarToCartesian(
+									gs::Vec2f(0.5f, angle)
+								);
+
+								Particle::spawnParticles(
+									gs::Vec2f(tilePosition.x, tilePosition.y) +
+										centerOffset + gs::Vec2f(0.5f, 0.5f),
+									ParticleInfo::JumpOrb,
+									gs::Color::Yellow,
+									3 * (3 - (window::renderFramerate / 30)),
+									centerOffset * -0.05f
+								);
+
+								break; 
+							}
+
 							renderTile(tilePosition, tileId);
+						}
 						else {
+							if (rand() % 2 == 0) {
+								float angle = 90.0f + (rand() % 180); 
+								gs::Vec2f centerOffset = gs::util::polarToCartesian(
+									gs::Vec2f(1.5f, angle)
+								); 
+
+								Particle::spawnParticles(
+									gs::Vec2f(tilePosition.x, tilePosition.y) +
+										centerOffset,
+									ParticleInfo::Portal,
+									gs::Color::White,
+									3 - (window::renderFramerate / 30),
+									centerOffset * -0.03f
+								); 
+							}
+
 							PortalPair newPortalPair = { tilePosition, tileId }; 
 							portalPairs.push_back(newPortalPair); 
 						}
@@ -397,7 +469,7 @@ namespace engine {
 
 			sCube.setTextureRect(bounds);
 		}
-		void renderPlayer(const Player& player) {
+		void renderPlayer(const Player& player, bool renderCrown) {
 			// Used to color the background of each cube. 
 			static sf::RectangleShape cubeBackground; 
 
@@ -412,6 +484,14 @@ namespace engine {
 			sCube.setOrigin(cubeTextureSize / 2.0f, cubeTextureSize / 2.0f);
 			sCube.setRotation(player.angle); 
 			sCube.setColor(player.primaryColor); 
+
+			sCrown.setPosition(sCube.getPosition()); 
+			sCrown.setScale(sCube.getScale()); 
+			sCrown.setOrigin(
+				gs::Vec2f(0.0f, sCrown.getTexture()->getSize().y) * 0.5f +
+					sCube.getOrigin()
+			);
+			sCrown.setRotation(sCube.getRotation()); 
 
 			int textureId = player.textureIndex; 
 
@@ -429,50 +509,77 @@ namespace engine {
 			cubeBackground.setFillColor(player.secondaryColor);
 
 			if (!player.isFlying) {
-				window::winmain->draw(cubeBackground); 
+				window::winmain->draw(cubeBackground);
 				window::winmain->draw(sCube);
+
+				if (renderCrown)
+					window::winmain->draw(sCrown); 
 			}
 			else {
-				sCube.move(0.0f, 20.0f); 
-				sShip.setPosition(sCube.getPosition()); 
+				sCube.move(0.0f, 20.0f);
 
-				sCube.setScale(originalScale * 0.5f);
-				sCube.move(
-					std::cos(gs::util::toRadians(player.angle - 80.0f)) * 30.0f,
-					std::sin(gs::util::toRadians(player.angle - 80.0f)) * 30.0f
+				if (player.isFlipped)
+					sCube.move(0.0f, -40.0f); 
+
+				sShip.setPosition(sCube.getPosition());
+
+				sCube.setScale(
+					originalScale.x * 0.5f, originalScale.y * 0.5f
+						* (player.isFlipped ? -1 : 1)
 				);
+				sCube.move(
+					std::cos(gs::util::toRadians(player.angle - 80.0f)) 
+						* 30.0f * (player.isFlipped ? -1 : 1),
+					std::sin(gs::util::toRadians(player.angle - 80.0f)) 
+						* 30.0f * (player.isFlipped ? -1 : 1)
+				);
+				sCrown.setPosition(sCube.getPosition()); 
+				sCrown.setScale(sCube.getScale()); 
 
 				cubeBackground.setSize(gs::Vec2f(
 					cubeTextureSize * sCube.getScale().x,
-					cubeTextureSize * sCube.getScale().y	
-				)); 
-				cubeBackground.setPosition(sCube.getPosition()); 
+					cubeTextureSize * sCube.getScale().y
+				));
+				cubeBackground.setPosition(sCube.getPosition());
 				cubeBackground.setOrigin(cubeBackground.getSize() * 0.5f);
 
-				window::winmain->draw(cubeBackground); 
+				window::winmain->draw(cubeBackground);
 				window::winmain->draw(sCube);
 
-				sShip.setTexture(tShips[0]); 
+				if (renderCrown)
+					window::winmain->draw(sCrown); 
+
+				const gs::Vec2f originalScale = sShip.getScale();
+
+				sShip.setScale(
+					originalScale.x, originalScale.y
+						* (player.isFlipped ? -1 : 1)
+				); 
+				sShip.setTexture(tShips[0]);
 				sShip.setOrigin(
 					sShip.getTexture()->getSize().x / 2.0f,
 					sShip.getTexture()->getSize().y / 2.0f
-				); 
-				sShip.setColor(player.primaryColor); 
-				sShip.setRotation(player.angle); 
-
-				window::winmain->draw(sShip); 
-
-				sShip.setTexture(tShips[1]); 
-				sShip.setColor(player.secondaryColor); 
+				);
+				sShip.setColor(player.primaryColor);
+				sShip.setRotation(player.angle);
 
 				window::winmain->draw(sShip);
+
+				sShip.setTexture(tShips[1]);
+				sShip.setColor(player.secondaryColor);
+
+				window::winmain->draw(sShip);
+
+				sShip.setScale(originalScale); 
 			}
 
 			sCube.setScale(originalScale); 
 		}
 		void renderNpcs() {
-			for (const auto& pair : npcs) 
-				renderPlayer(pair.first);
+			for (int pairIndex = 0; pairIndex < npcs.size(); pairIndex++) {
+				const auto& pair = npcs[pairIndex]; 
+				renderPlayer(pair.first, pairIndex == bestNpcIndex);
+			}
 		}
 		inline void renderParticle(const Particle& particle) {
 			static sf::RectangleShape particleBox; 

@@ -22,6 +22,7 @@ namespace engine {
 			HideInfo,
 			ResetSimulation,
 			ChangeFramerate, 
+			ChangeQuickStop, 
 			HideInfoMenu,
 			IncLevel,
 			IncHue, 

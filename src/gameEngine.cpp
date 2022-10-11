@@ -27,6 +27,8 @@ namespace gameEngine {
 		engine::player.textureIndex = 0;
 		engine::player.primaryHue = 60.0f; 
 		engine::player.secondaryHue = 180.0f; 
+
+		engine::render::ui::simulationRunning = false; 
 	}
 	void close() {
 #ifdef mDebug

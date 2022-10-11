@@ -19,6 +19,7 @@ namespace engine {
 			sf::Keyboard::F3, 
 			sf::Keyboard::F4, 
 			sf::Keyboard::F5, 
+			sf::Keyboard::F6, 
 			sf::Keyboard::H,
 			sf::Keyboard::Enter, 
 			sf::Keyboard::Equal 

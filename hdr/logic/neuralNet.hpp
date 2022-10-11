@@ -43,20 +43,25 @@ namespace engine {
 		// Constrains values to a certain range. Note: This activation function
 		// is a sigmoid function. 
 		static float activation(float value); 
-	private:
-		// Performs dot product on 2 vectors. 
-		static float dot(const std::vector<float>& v1, const std::vector<float>& v2); 
+		static float randRange(gs::Vec2f bounds); 
 		// Generates value between 2 bounds. Used for generating weights and 
 		// biases. 
 		static float randRange(float lowerBound, float upperBound); 
+	private:
+		// Performs dot product on 2 vectors. 
+		static float dot(const std::vector<float>& v1, const std::vector<float>& v2); 
 	};
 
 	extern std::vector<std::pair<Player, NeuralNet>> npcs; 
 	// Keeps track of the npc that has made it the furthest. 
 	extern int bestNpcIndex; 
+	extern int prvsBestNpcIndex; 
+	extern bool endGenerationEarly; 
 
 	// Calculates the last xpos that a player is safe on. 
-	float calculateLastSafePosition(const Player& player); 
+	gs::Vec2f calculateLastSafePosition(const Player& player); 
+	bool calculateJumpDeathStatus(const Player& player); 
+	int calculateFlyingVerticalObsticleHeight(gs::Vec2f safePosition); 
 	std::pair<Player, NeuralNet>* getFarthestNpc();
 
 	void initNpcs(); 

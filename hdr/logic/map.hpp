@@ -11,22 +11,31 @@ namespace engine {
 		// Alias for int.
 		typedef int Id; 
 		enum { 
-			Invalid = -1, Air, Square, TallSpike, ShortSpike, GridSquare0, 
+			Invalid = -1, Air, Square, TallSpike, ShortSpike0, GridSquare0, 
 			GridSquare1, GridSquare2, GridSquare3, GridSquare4, GridSquare5, 
 			GridSquare6, GridSquare7, GridSquare8, GridSquare9, GridSquare10, 
 			GridSquare11, GridSquare12, GridSquare13, GridSquare14, GridSquare15, 
 			SemisolidRectangle, SpikeGround0, SpikeGround1, FlippedTallSpike, 
 			Chain0, Chain1, Chain2, SpikedSemisolidRectangle, GridSquare16, 
-			GridSquare17, GridSquare18, PortalEntrance, PortalExit, End
+			GridSquare17, GridSquare18, PortalEntrance, PortalExit, JumpPad, 
+			JumpOrb, PortalInvert, PortalRevert, GridSquare19, SideSpike0, 
+			SideSpike1, ShortSpike1, SpikeGround2, SpikeGround3, 
+			FlippedSemisoldRectangle, End
 		};
 
-		enum class CollisionType { Empty, Solid, Spike, Semisolid, Portal }
+		enum class CollisionType { 
+			Empty, Solid, Spike, Semisolid, FlippedSemiSolid, Portal, JumpPad, 
+			JumpOrb
+		}
 			collisionType;
+		enum class ActionType { None, Flying, FlipGravity }
+			actionType;
 		// The index of the tiles texture within the tile-sheet. 
 		int textureIndex; 
 		bool colorable;
 
 		static CollisionType getCollisionType(Id id); 
+		static ActionType getActionType(Id id); 
 		static int getTextureIndex(Id id); 
 		static bool isColorable(Id id); 
 	};

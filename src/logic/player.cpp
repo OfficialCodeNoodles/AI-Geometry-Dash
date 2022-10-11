@@ -7,8 +7,8 @@
 
 namespace engine {
 	Player::Player() : angle(0.0f), textureIndex(0), respawnTicks(0), 
-		isFlying(false), onGround(false), onCeiling(false), isNpc(false), 
-		isClone(false), jump(false) {
+		isFlying(false), isFlipped(false), onGround(false), onCeiling(false), 
+		isNpc(false), isClone(false), jump(false) {
 	}
 
 	void Player::spawn() {
@@ -18,6 +18,7 @@ namespace engine {
 		respawnTicks = 0; 
 		lastPortalEntry = gs::Vec2i(-1, -1); 
 		isFlying = false; 
+		isFlipped = false; 
 
 		if (attempt > 0)
 			position.x += 9.0f; 
@@ -70,18 +71,23 @@ namespace engine {
 			position.x -= forwardSpeed;
 #endif
 
-		if (!isNpc) jump = input::isKeyPressed(input::Jump); 
+		if (!isNpc) 
+			jump = (input::isKeyPressed(input::Jump) && (onGround || isFlying)) ||
+				(input::isKeyClicked(input::Jump) && !onGround);
 
 		// Standard movement. 
 		if (!isFlying) {
 			// Can jump when key is pressed and is on the ground. 
 			if (jump && onGround)
-				velocity.y = -0.34f;
+				velocity.y = -0.34f * (isFlipped ? -1 : 1);
 
 			// Applies gravity. 
-			velocity.y += 0.0255f;
+			velocity.y += 0.0255f * (isFlipped ? -1 : 1);
 			// Limits vertical velocity (terminal velocity). 
-			velocity.y = std::min(velocity.y, 0.3f);
+			if (!isFlipped)
+				velocity.y = std::min(velocity.y, 0.3f);
+			else
+				velocity.y = std::max(velocity.y, -0.3f); 
 
 			updatePosition();
 			collision::applyCollision(*this);
@@ -97,22 +103,24 @@ namespace engine {
 
 			// Leaves a trail of particles while the player is on the ground. 
 			if (!isClone && onGround && ticks % 2 == 0)
-				Particle::spawnMovementParticles(
-					position + gs::Vec2f(-0.3f, 0.3f), secondaryColor, 1
+				Particle::spawnParticles(
+					position + gs::Vec2f(-0.3f, 0.3f), ParticleInfo::Movement,
+					secondaryColor, 1
 				);
 		}
 		// Flying movement. 
 		else {
 			// Rate in which the ship turns. 
-			const float angleAdjustSpeed = 3.0f; 
+			const float angleAdjustSpeed = 3.0f * (isFlipped ? -1 : 1);
 
 			if (jump) {
 				if (!isClone && ticks % 2 == 0)
-					Particle::spawnMovementParticles(
+					Particle::spawnParticles(
 						position + gs::Vec2f(
 							std::cos(gs::util::toRadians(angle + 140.0f)) * 0.5f, 
 							std::sin(gs::util::toRadians(angle + 140.0f)) * 0.5f
-						), secondaryColor, 1
+						) + gs::Vec2f(0.0f, isFlipped ? -0.6f : 0.0f), 
+						ParticleInfo::Movement, secondaryColor, 1
 					);
 				
 				if (onCeiling)
@@ -136,8 +144,9 @@ FLATTEN_SHIP:
 		}
 
 		if (!isClone && !prvsOnGround && onGround)
-			Particle::spawnGroundHitParticles(
-				position + gs::Vec2f(0.0f, 0.3f), secondaryColor, 15
+			Particle::spawnParticles(
+				position + gs::Vec2f(0.0f, 0.3f), ParticleInfo::GroundHit,
+				secondaryColor, 15
 			);
 
 		// Kills player if they get under the map. 

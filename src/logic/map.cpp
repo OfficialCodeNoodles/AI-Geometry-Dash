@@ -4,6 +4,9 @@ namespace engine {
 	Tile::CollisionType Tile::getCollisionType(Id id) {
 		return tiles[id].collisionType;
 	}
+	Tile::ActionType Tile::getActionType(Id id) {
+		return tiles[id].actionType;
+	}
 	int Tile::getTextureIndex(Id id) {
 		return tiles[id].textureIndex; 
 	}
@@ -13,38 +16,49 @@ namespace engine {
 
 	Tile tiles[Tile::End] = {
 		{ Tile::CollisionType::Empty },
-		{ Tile::CollisionType::Solid, 0, false },
-		{ Tile::CollisionType::Spike, 1, false },
-		{ Tile::CollisionType::Spike, 2, false },
-		{ Tile::CollisionType::Solid, 3, false },
-		{ Tile::CollisionType::Solid, 4, false },
-		{ Tile::CollisionType::Solid, 5, false },
-		{ Tile::CollisionType::Solid, 6, false },
-		{ Tile::CollisionType::Solid, 7, false },
-		{ Tile::CollisionType::Solid, 8, false },
-		{ Tile::CollisionType::Solid, 9, false },
-		{ Tile::CollisionType::Solid, 10, false },
-		{ Tile::CollisionType::Solid, 11, false },
-		{ Tile::CollisionType::Solid, 12, false },
-		{ Tile::CollisionType::Solid, 13, false },
-		{ Tile::CollisionType::Solid, 14, false },
-		{ Tile::CollisionType::Solid, 15, false },
-		{ Tile::CollisionType::Solid, 16, false },
-		{ Tile::CollisionType::Solid, 17, false },
-		{ Tile::CollisionType::Solid, 18, false },
-		{ Tile::CollisionType::Semisolid, 19, false },
-		{ Tile::CollisionType::Spike, 20, false },
-		{ Tile::CollisionType::Spike, 21, true },
-		{ Tile::CollisionType::Spike, 22, false },
-		{ Tile::CollisionType::Empty, 23, true },
-		{ Tile::CollisionType::Empty, 24, true },
-		{ Tile::CollisionType::Empty, 25, true },
-		{ Tile::CollisionType::Solid, 26, false }, 
-		{ Tile::CollisionType::Solid, 27, false },
-		{ Tile::CollisionType::Solid, 28, false },
-		{ Tile::CollisionType::Solid, 29, false },
-		{ Tile::CollisionType::Portal },
-		{ Tile::CollisionType::Portal }
+		{ Tile::CollisionType::Solid, Tile::ActionType::None, 0, false },
+		{ Tile::CollisionType::Spike, Tile::ActionType::None, 1, false },
+		{ Tile::CollisionType::Spike, Tile::ActionType::None, 2, false },
+		{ Tile::CollisionType::Solid, Tile::ActionType::None, 3, false },
+		{ Tile::CollisionType::Solid, Tile::ActionType::None, 4, false },
+		{ Tile::CollisionType::Solid, Tile::ActionType::None, 5, false },
+		{ Tile::CollisionType::Solid, Tile::ActionType::None, 6, false },
+		{ Tile::CollisionType::Solid, Tile::ActionType::None, 7, false },
+		{ Tile::CollisionType::Solid, Tile::ActionType::None, 8, false },
+		{ Tile::CollisionType::Solid, Tile::ActionType::None, 9, false },
+		{ Tile::CollisionType::Solid, Tile::ActionType::None, 10, false },
+		{ Tile::CollisionType::Solid, Tile::ActionType::None, 11, false },
+		{ Tile::CollisionType::Solid, Tile::ActionType::None, 12, false },
+		{ Tile::CollisionType::Solid, Tile::ActionType::None, 13, false },
+		{ Tile::CollisionType::Solid, Tile::ActionType::None, 14, false },
+		{ Tile::CollisionType::Solid, Tile::ActionType::None, 15, false },
+		{ Tile::CollisionType::Solid, Tile::ActionType::None, 16, false },
+		{ Tile::CollisionType::Solid, Tile::ActionType::None, 17, false },
+		{ Tile::CollisionType::Solid, Tile::ActionType::None, 18, false },
+		{ Tile::CollisionType::Semisolid, Tile::ActionType::None, 19, false },
+		{ Tile::CollisionType::Spike, Tile::ActionType::None, 20, false },
+		{ Tile::CollisionType::Spike, Tile::ActionType::None, 21, true },
+		{ Tile::CollisionType::Spike, Tile::ActionType::None, 22, false },
+		{ Tile::CollisionType::Empty, Tile::ActionType::None, 23, true },
+		{ Tile::CollisionType::Empty, Tile::ActionType::None, 24, true },
+		{ Tile::CollisionType::Empty, Tile::ActionType::None, 25, true },
+		{ Tile::CollisionType::Solid, Tile::ActionType::None, 26, false },
+		{ Tile::CollisionType::Solid, Tile::ActionType::None, 27, false },
+		{ Tile::CollisionType::Solid, Tile::ActionType::None, 28, false },
+		{ Tile::CollisionType::Solid, Tile::ActionType::None, 29, false },
+		{ Tile::CollisionType::Portal, Tile::ActionType::Flying, 0 },
+		{ Tile::CollisionType::Portal, Tile::ActionType::Flying, 2 },
+		{ Tile::CollisionType::JumpPad, Tile::ActionType::None, 30, false },
+		{ Tile::CollisionType::JumpOrb, Tile::ActionType::None },
+		{ Tile::CollisionType::Portal, Tile::ActionType::FlipGravity, 4 },
+		{ Tile::CollisionType::Portal, Tile::ActionType::FlipGravity, 6 },
+		{ Tile::CollisionType::Empty, Tile::ActionType::None, 18, false },
+		{ Tile::CollisionType::Spike, Tile::ActionType::None, 31 },
+		{ Tile::CollisionType::Spike, Tile::ActionType::None, 32 },
+		{ Tile::CollisionType::Spike, Tile::ActionType::None, 33 },
+		{ Tile::CollisionType::Spike, Tile::ActionType::None, 34, true },
+		{ Tile::CollisionType::Spike, Tile::ActionType::None, 35, true },
+		{ Tile::CollisionType::FlippedSemiSolid, Tile::ActionType::None, 36 }
 	};
 
 	Map::Map() : size(gs::Vec2i(50, 25)), mapNumber(0), hue(210.0f), 
@@ -68,9 +82,14 @@ namespace engine {
 
 		int sizeChangeState = 0; 
 
-		if (this->size.x > 0)
+		if (size.x > 0) {
+			// Constrains the map to a minimum size. 
+			size.x = std::max(size.x, 21);
+			size.y = std::max(size.y, 10);
+		}
+		if (this->size.x > 0) 
 			sizeChangeState = gs::util::sign(size.x - this->size.x);
-
+		
 		// True when map is already allocated. 
 		if (blockSize > 0) {
 			tilesCopy = new Tile::Id[blockSize]; 
@@ -84,6 +103,7 @@ namespace engine {
 		// size might be preset when being loaded in from a text file. 
 		if (size != gs::Vec2i())
 			this->size = size; 
+
 
 		// Makes sure any previous allocation is deleted. 
 		deallocate(); 

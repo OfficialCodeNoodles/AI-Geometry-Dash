@@ -46,6 +46,8 @@ namespace engine {
 				if (input::isKeyClicked(input::ChangeFramerate))
 					window::renderFramerate = window::renderFramerate == 30 ?
 						60 : 30; 
+				if (input::isKeyClicked(input::ChangeQuickStop))
+					endGenerationEarly = !endGenerationEarly; 
 
 				if (input::isKeyClicked(input::HideInfoMenu))
 					displayInfoMenu = !displayInfoMenu; 
@@ -150,6 +152,7 @@ namespace engine {
 						\n F3 - Show Simulation\n  Information\
 						\n F4 - Restart Sim\
 						\n F5 - Change Framerate\
+						\n F6 - End Generation\n  Early\
 						\n F11 - Enter/Exit\n  Fullscreen\
 						\n\n Space - Jump\
 						\n Escape - Close App\
@@ -208,12 +211,12 @@ namespace engine {
 					return gs::Vec2f(
 						(layerIndex * 180.0f) + 60.0f, 150.0f +
 						calculateDistributionPosition(
-							neuronIndex, neuronTotal, 120.0f * neuronTotal
+							neuronIndex, neuronTotal, 55.0f * (neuronTotal + 1)
 						) 
 					);
 				};
 
-				neuronCircle.setRadius(30.0f);
+				neuronCircle.setRadius(25.0f);
 				neuronCircle.setOrigin(
 					neuronCircle.getRadius(), neuronCircle.getRadius()
 				);
@@ -240,7 +243,7 @@ namespace engine {
 								);
 
 								renderLine(
-									position, nextPosition, 10.0f,
+									position, nextPosition, 5.0f,
 									// Alters color based on the weight of the
 									// connection.
 									gs::util::approach(
